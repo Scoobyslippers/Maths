@@ -1,6 +1,31 @@
 import numpy as np
-#from scipy.sparse import diags
+from scipy.sparse import diags
 
+def generate_safe_system(n):
+    """
+    Generate a linear system A x = b where A is strictly diagonally dominant,
+    ensuring LU factorization without pivoting will work.
+
+    Parameters:
+        n (int): Size of the system (n x n)
+
+    Returns:
+        A (ndarray): n x n strictly diagonally dominant matrix
+        b (ndarray): RHS vector
+        x_true (ndarray): The true solution vector
+    """
+
+    k = [np.ones(n - 1), -2 * np.ones(n), np.ones(n - 1)]
+    offset = [-1, 0, 1]
+    A = diags(k, offset).toarray()
+
+    # Solution is always all ones
+    x_true = np.ones((n, 1))
+
+    # Compute b = A @ x_true
+    b = A @ x_true
+
+    return A, b, x_true
 
 def lu_factorisation(A):
     """
@@ -33,10 +58,7 @@ def lu_factorisation(A):
 
     # construct arrays of zeros
     L, U = np.zeros_like(A), np.zeros_like(A)
-
-    # ...
-    L[0, 0] = 1
-    U[0, 0] = 1
+    L = L = np.eye(n, dtype=float) #Make Diagonal Matrix to 1s
 
     #Create the Diagonal matrix (D)
     i = 0
@@ -59,15 +81,17 @@ def lu_factorisation(A):
         ## E.G U = [4 X X] A = [4 X X] --> L = [1   0 0]
         ##         [X X X]     [2 X X]         [2/4 0 0]
         ##         [X X X]     [0 X X]         [0/4 0 0]
+        for i in range(n):
+            for j in range(i,n):
+                sumValue = np.dot(L[i, :i], U[:i, j])
+                U[i,j] = B[i,j] - sumValue
+            for j in range(i+1,n):
+                sumValue = np.dot(L[i, :i], U[:i, j])
 
-    for rows in range(1,n): ##RUns from row 1 (ALREADY CONFIRMED FIRST VALUE) to the final row
-        for columns in range(rows,n): ##goes from the current value of row column to the final column - so we arent wriritng on the values that are 0
-            SumValue = np.dot(L[rows, :rows], U[:rows, columns]) #Ths creates the sum value so they can subtract - this is the condensed sum when we take out the 0s
-            U[rows, columns] = A[rows, columns] - SumValue #Substracts the sum value that is created from the current value in A
-        for columns in range(rows+1,n): #RUns from the next row value, to the final column value
-            sumNewVal = np.dot(L[columns, :rows], U[:rows, rows]) #Same as the sum val above then
-            L[columns, rows] = (A[columns, rows]-sumNewVal) / U[rows, rows] ##Finishes the value of L by subtracting the Sum val ten dividing it by the row value
-    
+                if np.isclose(U[i,i],0):
+                    raise ValueError("Zero pivot present, LU without pivoting failed")
+                L[j, i] = (A[j, i] - sumValue) / U[i, i]
+
     return L,U
 
 def determinant(A):
@@ -84,10 +108,9 @@ def determinant(A):
     return detL * detU
 
 
-A_test = np.array([[4, 3, 2, 1],
-                   [3, 3, 2, 1],
-                   [2, 2, 2, 1],
-                   [1, 1, 1, 1]], dtype=float)
+A_test = np.array([[2, 3, 4],
+                   [5, 6, 7],
+                   [1, 2, 3]], dtype=float)
 
 try:
     L, U = lu_factorisation(A_test)
@@ -95,5 +118,8 @@ try:
     print("\nMatrix U:\n", U)
     print(determinant(A_test))
 
+    ALarge, BLarge, XLarge = generate_safe_system(100)
+    print(ALarge)
+    print (determinant(ALarge))
 except ValueError as e:
     print(f"Error: {e}")
