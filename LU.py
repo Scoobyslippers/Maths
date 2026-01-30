@@ -58,7 +58,7 @@ def lu_factorisation(A):
 
     # construct arrays of zeros
     L, U = np.zeros_like(A), np.zeros_like(A)
-    L = L = np.eye(n, dtype=float) #Make Diagonal Matrix to 1s
+    L = np.eye(n, dtype=float) #Make Diagonal Matrix to 1s
 
     #Create the Diagonal matrix (D)
     i = 0
@@ -74,22 +74,28 @@ def lu_factorisation(A):
         ##          [ x x x ]          [0 X X]
         ##          [ x x x ]          [0 0 X]
 
-    for rows in range(n): #Goes through the rows in the first column
-        if rows >= 1 : #Ignores the first element as its set to 1 - diag matrix
-            divisor = U[0, 0] #Sets the value of the div to the first value in U, this case is 4
-            L[rows,0] = A[rows, 0 ] / divisor #This divides the first row values of A, by the value of the divisor  
+    for rows in range(1, n): #Goes through the rows in the first column
+        divisor = U[0, 0] #Sets the value of the div to the first value in U, this case is 4
+        if np.isclose(divisor, 0):
+            raise ValueError("Zero pivot present, Lu requires pivoting")
+        L[rows,0] = A[rows, 0 ] / divisor #This divides the first row values of A, by the value of the divisor  
         ## E.G U = [4 X X] A = [4 X X] --> L = [1   0 0]
         ##         [X X X]     [2 X X]         [2/4 0 0]
         ##         [X X X]     [0 X X]         [0/4 0 0]
-        for i in range(n):
+
+
+
+        for i in range(1, n):
             for j in range(i,n):
                 sumValue = np.dot(L[i, :i], U[:i, j])
                 U[i,j] = B[i,j] - sumValue
+
+            if np.isclose(U[i,i],0):
+                raise ValueError("Zero pivot present, LU without pivoting failed")
+
+                
             for j in range(i+1,n):
                 sumValue = np.dot(L[i, :i], U[:i, j])
-
-                if np.isclose(U[i,i],0):
-                    raise ValueError("Zero pivot present, LU without pivoting failed")
                 L[j, i] = (A[j, i] - sumValue) / U[i, i]
 
     return L,U
@@ -113,13 +119,13 @@ A_test = np.array([[2, 3, 4],
                    [1, 2, 3]], dtype=float)
 
 try:
-    L, U = lu_factorisation(A_test)
-    print("Matrix L:\n", L)
-    print("\nMatrix U:\n", U)
-    print(determinant(A_test))
+
 
     ALarge, BLarge, XLarge = generate_safe_system(100)
     print(ALarge)
+    L,U = lu_factorisation(ALarge)
+    print(L)
+    print(U)
     print (determinant(ALarge))
 except ValueError as e:
     print(f"Error: {e}")
